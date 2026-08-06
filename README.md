@@ -1,82 +1,96 @@
-# Linux Soft Cleaner
+<div align="center">
 
-<p align="center">
-  <img src="assets/banner.png" alt="Linux Soft Cleaner Banner" width="100%">
-</p>
+<h1>linux-soft-cleaner</h1>
 
-A fast, safe, and minimal disk cleanup tool for Linux servers — written in Rust for maximum performance, memory safety, and power efficiency.
+<p><strong>A fast, safe, and minimal disk cleanup tool for Linux servers — written in Rust.</strong></p>
+
+[![Crates.io](https://img.shields.io/crates/v/linux-soft-cleaner?style=flat-square&color=fc8d62)](https://crates.io/crates/linux-soft-cleaner)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/anilcan-kara/linux-soft-cleaner/release.yml?style=flat-square)](https://github.com/anilcan-kara/linux-soft-cleaner/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/anilcan-kara/linux-soft-cleaner?style=flat-square&color=8be04e)](https://github.com/anilcan-kara/linux-soft-cleaner/releases)
+
+```bash
+linux-soft-cleaner --dry-run --days 7
+```
+
+</div>
+
+---
+
+## What It Does
+
+`linux-soft-cleaner` safely removes stale files that accumulate on Linux servers over time: temp files, old logs, package manager caches, and optionally Docker and npm artifacts.
+
+It's designed for **server environments** where you want safe, predictable cleanup without the risk of a shell script going wrong.
+
+---
+
+## What Gets Cleaned
+
+| Category | Path(s) | Condition |
+|---|---|---|
+| 🗂️ Temp files | `/tmp/*`, `/var/tmp/*` | Older than `--days` |
+| 📋 System logs | `/var/log/**/*.log`, `*.log.*` | Older than `--days` |
+| 📦 APT cache | `/var/cache/apt/archives/*.deb` | Always |
+| 📦 YUM/DNF cache | `/var/cache/yum/`, `/var/cache/dnf/` | Always |
+| 🐳 Docker system | Stopped containers, dangling images, unused volumes | `--docker` flag |
+| 📦 NPM cache | `~/.npm/_cacache/` | `--npm` flag |
+
+---
 
 ## Features
 
-- **Safe by default** — dry-run mode (`--dry-run` / `-n`) shows what would be deleted before touching anything.
-- **Blazingly Fast** — leveraging Rust's zero-cost abstractions and concurrent file system traversal.
-- **Zero dependencies** — single static binary with no external library requirements.
-- **Comprehensive Scans**:
-  - `/tmp` files (using configurable age filter).
-  - Package manager caches (APT, YUM, DNF, Pacman).
-  - Rotated log archives under `/var/log`.
-  - Docker caches (`--docker` flag to prune images, containers, and build cache).
-  - NPM global cache (`--npm` flag).
+- 🛡️ **Safe by default** — preview every deletion before it happens with `--dry-run`
+- ⏱️ **Age-based** — only removes files older than `--days` (default: 7 days)
+- 🐳 **Docker aware** — optional Docker system prune with `--docker`
+- 📦 **NPM cache** — optional npm cache clean with `--npm`
+- 📊 **Space report** — shows total bytes freed after each run
+- 🎨 **Colored output** — clear progress spinner and file-by-file reporting
+- ⚡ **Fast** — parallel directory scanning, single static binary
 
 ---
 
-## Installation & Usage
+## Usage
 
-### 1. Run instantly via npx (Node.js required)
-You can execute it instantly on any machine with Node.js installed without installing the package:
+### Dry run — preview what would be deleted
 ```bash
-# Preview cleanable space (safe dry-run)
-npx linux-soft-cleaner --dry-run
-
-# Run actual cleanup
-sudo npx linux-soft-cleaner
-```
-
-### 2. Install globally via NPM
-```bash
-npm install -g linux-soft-cleaner
-
-# Use the command directly
 linux-soft-cleaner --dry-run
 ```
 
-### 3. Install via curl shell script (Linux/macOS)
-Installs the precompiled binary directly into your path:
+### Clean files older than 7 days (default)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anilcan-kara/linux-soft-cleaner/master/install.sh | sh
+sudo linux-soft-cleaner
 ```
 
-### 4. Install from source via Cargo (Rust toolchain required)
+### Full cleanup: temp + logs + APT + Docker + NPM
 ```bash
-cargo install linux-soft-cleaner
+sudo linux-soft-cleaner --docker --npm
 ```
-
-### 5. Download statically linked binaries
-You can download the precompiled static binary for your platform directly from the GitHub Release assets:
-- 🐧 **Linux (x64)**: [linux-soft-cleaner-linux-x64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-linux-x64)
-- 🐧 **Linux (ARM64)**: [linux-soft-cleaner-linux-arm64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-linux-arm64)
-- 🍎 **macOS (x64)**: [linux-soft-cleaner-darwin-x64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-darwin-x64)
-- 🍎 **macOS (ARM64)**: [linux-soft-cleaner-darwin-arm64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-darwin-arm64)
 
 ---
 
-## Command Line Options
+## CLI Reference
 
-```bash
-=== Linux Soft Cleaner v0.1.0 ===
-A fast, safe, and minimal disk cleanup tool for Linux servers
-
-Usage: linux-soft-cleaner [OPTIONS]
+```
+linux-soft-cleaner [OPTIONS]
 
 Options:
-  -n, --dry-run        Run in dry-run mode (preview changes, no files will be deleted)
-  -d, --days <DAYS>    Threshold in days for temporary files and logs [default: 7]
-      --docker         Also clean Docker system caches (containers, images, volumes)
-      --npm            Also clean global NPM cache
-  -h, --help           Print help
-  -V, --version        Print version
+  -d, --dry-run          Preview changes — no files will be deleted
+      --days <DAYS>      Age threshold in days [default: 7]
+      --docker           Also prune Docker system (containers, images, volumes)
+      --npm              Also clean global NPM cache
+  -h, --help             Print help
+  -V, --version          Print version
 ```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All PRs welcome.
+
+---
 
 ## License
 
-MIT — Anilcan Kara
+MIT © [Anilcan Kara](https://github.com/anilcan-kara)
