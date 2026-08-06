@@ -30,6 +30,15 @@ fn is_older_than_days(metadata: &fs::Metadata, days: u64) -> bool {
     false
 }
 
+pub fn is_rotated_log_filename(filename: &str) -> bool {
+    filename.contains(".log.")
+        || filename.ends_with(".gz")
+        || filename.ends_with(".bz2")
+        || filename.ends_with(".xz")
+        || filename.ends_with(".1")
+        || filename.ends_with(".old")
+}
+
 fn clean_directory_files<F>(dir_path: &Path, args: &Args, filter: F, description: &str) -> u64
 where
     F: Fn(&Path, &fs::Metadata) -> bool,
@@ -153,8 +162,7 @@ fn main() {
         &args,
         |path, meta| {
             let filename = path.file_name().unwrap_or_default().to_string_lossy();
-            let is_rotated = filename.contains(".log.") || filename.ends_with(".gz") || filename.ends_with(".1") || filename.ends_with(".old");
-            is_rotated && is_older_than_days(meta, args.days)
+            is_rotated_log_filename(&filename) && is_older_than_days(meta, args.days)
         },
         "rotated system logs (/var/log)",
     );
@@ -219,5 +227,15 @@ mod tests {
         let file = tempfile::NamedTempFile::new().unwrap();
         let meta = fs::metadata(file.path()).unwrap();
         assert!(!is_older_than_days(&meta, 7));
+    }
+
+    #[test]
+    fn test_is_rotated_log_filename() {
+        assert!(is_rotated_log_filename("syslog.1"));
+        assert!(is_rotated_log_filename("nginx.log.2026-08-01"));
+        assert!(is_rotated_log_filename("auth.log.gz"));
+        assert!(is_rotated_log_filename("app.log.old"));
+        assert!(!is_rotated_log_filename("active_app.log"));
+        assert!(!is_rotated_log_filename("config.toml"));
     }
 }
