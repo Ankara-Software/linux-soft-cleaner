@@ -100,7 +100,7 @@ where
 fn main() {
     let args = Args::parse();
 
-    println!("{}", "=== Linux Soft Cleaner v0.1.0 ===".bold().blue());
+    println!("{}", "=== Linux Soft Cleaner v0.1.1 ===".bold().blue());
     if args.dry_run {
         println!("{}", "Running in DRY-RUN mode. No changes will be written.".yellow());
     }
@@ -208,4 +208,16 @@ fn main() {
         println!("Total space saved: {:.2} MB", saved_mb);
     }
     println!("{}", "System cleanup completed successfully!".green());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_older_than_days_fresh_file() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let meta = fs::metadata(file.path()).unwrap();
+        assert!(!is_older_than_days(&meta, 7));
+    }
 }
