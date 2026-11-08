@@ -2,6 +2,10 @@
 name = "linux-soft-cleaner"
 version = "0.1.1"
 edition = "2024"
+description = "A fast, safe, and minimal disk cleanup tool for Linux servers"
+license = "MIT"
+repository = "https://github.com/Ankara-Software/linux-soft-cleaner"
+homepage = "https://ankarayazilim.org/acik-kaynak/linux-soft-cleaner"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }

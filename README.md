@@ -1,82 +1,90 @@
+Maintained by [Ankara Yazılım](https://github.com/Ankara-Software) | [Project page](https://ankarayazilim.org/acik-kaynak/linux-soft-cleaner)
+
+**Status: beta.** It builds and runs, but the project has no automated tests yet. Only `--dry-run` was exercised on macOS; the Linux package-manager and log paths were not run on a Linux host.
+
 # Linux Soft Cleaner
 
 <p align="center">
   <img src="assets/banner.png" alt="Linux Soft Cleaner Banner" width="100%">
 </p>
 
-A fast, safe, and minimal disk cleanup tool for Linux servers — written in Rust for maximum performance, memory safety, and power efficiency.
+A small disk cleanup tool for Linux servers, written in Rust.
+
+## Türkçe
+
+Linux sunucularda disk alanı açmak için yazılmış küçük bir komut satırı aracıdır. `/tmp` içindeki eski dosyaları, paket yöneticisi önbelleklerini (APT, DNF, YUM, Pacman) ve `/var/log` altındaki döndürülmüş log arşivlerini temizler. İsteğe bağlı olarak Docker ve NPM önbelleğini de temizleyebilir. Hiçbir şeyi silmeden önce `--dry-run` ile ne silineceğini görebilirsiniz. Proje beta aşamasındadır: derlenir ve çalışır, ancak otomatik testleri henüz yoktur.
 
 ## Features
 
-- **Safe by default** — dry-run mode (`--dry-run` / `-n`) shows what would be deleted before touching anything.
-- **Blazingly Fast** — leveraging Rust's zero-cost abstractions and concurrent file system traversal.
-- **Zero dependencies** — single static binary with no external library requirements.
-- **Comprehensive Scans**:
-  - `/tmp` files (using configurable age filter).
-  - Package manager caches (APT, YUM, DNF, Pacman).
-  - Rotated log archives under `/var/log`.
-  - Docker caches (`--docker` flag to prune images, containers, and build cache).
-  - NPM global cache (`--npm` flag).
+- **Dry-run mode** — `--dry-run` / `-n` lists what would be deleted and the estimated space, without deleting anything.
+- **Single binary** — a compiled Rust program, no runtime to install.
+- **Scans**:
+  - `/tmp` files older than the age threshold (`--days`, default 7).
+  - Package manager caches: APT (`.deb`), DNF and YUM (`.rpm`), Pacman (`.pkg.tar.zst`, `.pkg.tar.xz`).
+  - Rotated log files under `/var/log` older than the age threshold.
+  - Docker: with `--docker` it runs `docker system prune -a --volumes -f`. In dry-run mode it only prints that command.
+  - NPM: with `--npm` it removes the files under `~/.npm/_cacache`.
+
+Run it with `--dry-run` first. Without it, matching files are deleted, and `--docker` removes unused images, containers and volumes.
 
 ---
 
-## Installation & Usage
+## Installation
 
-### 1. Run instantly via npx (Node.js required)
-You can execute it instantly on any machine with Node.js installed without installing the package:
+### From source (Rust toolchain required)
 ```bash
-# Preview cleanable space (safe dry-run)
-npx linux-soft-cleaner --dry-run
-
-# Run actual cleanup
-sudo npx linux-soft-cleaner
+cargo install --git https://github.com/Ankara-Software/linux-soft-cleaner
 ```
 
-### 2. Install globally via NPM
+### Install script (Linux and macOS)
+Downloads the latest release binary for your platform into `/usr/local/bin`, or `~/.local/bin` if that is not writable:
 ```bash
-npm install -g linux-soft-cleaner
+curl -fsSL https://raw.githubusercontent.com/Ankara-Software/linux-soft-cleaner/master/install.sh | sh
+```
 
-# Use the command directly
+### Release binaries
+Download the binary for your platform from the [latest release](https://github.com/Ankara-Software/linux-soft-cleaner/releases/latest): `linux-soft-cleaner-linux-x64`, `linux-soft-cleaner-linux-arm64`, `linux-soft-cleaner-darwin-x64`, `linux-soft-cleaner-darwin-arm64`.
+
+The package is not published on crates.io or npm. The `bin/cli.js` wrapper in this repository downloads the release binary and is not available through `npx` yet.
+
+---
+
+## Usage
+
+```bash
+# Preview what would be cleaned
 linux-soft-cleaner --dry-run
+
+# Run the cleanup (usually needs root for /var/cache and /var/log)
+sudo linux-soft-cleaner
+
+# Use a 30 day threshold and include Docker and NPM caches
+sudo linux-soft-cleaner --days 30 --docker --npm
 ```
-
-### 3. Install via curl shell script (Linux/macOS)
-Installs the precompiled binary directly into your path:
-```bash
-curl -fsSL https://raw.githubusercontent.com/anilcan-kara/linux-soft-cleaner/master/install.sh | sh
-```
-
-### 4. Install from source via Cargo (Rust toolchain required)
-```bash
-cargo install linux-soft-cleaner
-```
-
-### 5. Download statically linked binaries
-You can download the precompiled static binary for your platform directly from the GitHub Release assets:
-- 🐧 **Linux (x64)**: [linux-soft-cleaner-linux-x64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-linux-x64)
-- 🐧 **Linux (ARM64)**: [linux-soft-cleaner-linux-arm64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-linux-arm64)
-- 🍎 **macOS (x64)**: [linux-soft-cleaner-darwin-x64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-darwin-x64)
-- 🍎 **macOS (ARM64)**: [linux-soft-cleaner-darwin-arm64](https://github.com/anilcan-kara/linux-soft-cleaner/releases/download/v0.1.1/linux-soft-cleaner-darwin-arm64)
-
----
 
 ## Command Line Options
 
-```bash
-=== Linux Soft Cleaner v0.1.0 ===
-A fast, safe, and minimal disk cleanup tool for Linux servers
-
+```
 Usage: linux-soft-cleaner [OPTIONS]
 
 Options:
-  -n, --dry-run        Run in dry-run mode (preview changes, no files will be deleted)
-  -d, --days <DAYS>    Threshold in days for temporary files and logs [default: 7]
-      --docker         Also clean Docker system caches (containers, images, volumes)
-      --npm            Also clean global NPM cache
-  -h, --help           Print help
-  -V, --version        Print version
+  -n, --dry-run      Run in dry-run mode (preview changes, no files will be deleted)
+  -d, --days <DAYS>  Threshold in days for temporary files and logs [default: 7]
+      --docker       Also clean Docker system caches (containers, images, volumes)
+      --npm          Also clean global NPM cache
+  -h, --help         Print help
+  -V, --version      Print version
 ```
+
+## Development
+
+```bash
+cargo build
+cargo test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT — Anilcan Kara
+MIT. Copyright (c) 2026 Anılcan Kara and Ankara Yazılım contributors.
