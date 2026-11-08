@@ -8,7 +8,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 #[derive(Parser, Debug)]
 #[command(author, version, about = "A fast, safe, and minimal disk cleanup tool for Linux servers", long_about = None)]
 struct Args {
-    #[arg(short, long, help = "Run in dry-run mode (preview changes, no files will be deleted)")]
+    #[arg(short = 'n', long, help = "Run in dry-run mode (preview changes, no files will be deleted)")]
     dry_run: bool,
 
     #[arg(short, long, default_value = "7", help = "Threshold in days for temporary files and logs")]
@@ -100,7 +100,7 @@ where
 fn main() {
     let args = Args::parse();
 
-    println!("{}", "=== Linux Soft Cleaner v0.1.0 ===".bold().blue());
+    println!("{}", format!("=== Linux Soft Cleaner v{} ===", env!("CARGO_PKG_VERSION")).bold().blue());
     if args.dry_run {
         println!("{}", "Running in DRY-RUN mode. No changes will be written.".yellow());
     }
@@ -143,7 +143,10 @@ fn main() {
     total_saved += clean_directory_files(
         Path::new("/var/cache/pacman/pkg"),
         &args,
-        |path, _| path.extension().map_or(false, |ext| ext == "pkg.tar.zst" || ext == "pkg.tar.xz"),
+        |path, _| {
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+            file_name.ends_with(".pkg.tar.zst") || file_name.ends_with(".pkg.tar.xz")
+        },
         "Pacman package cache",
     );
 
