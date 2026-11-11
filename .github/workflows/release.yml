@@ -9,25 +9,42 @@ permissions:
   contents: write
 
 jobs:
+  tickets:
+    name: Artifact tickets
+    runs-on: [self-hosted, s31]
+    outputs:
+      tickets: ${{ steps.t.outputs.tickets }}
+    steps:
+      - id: t
+        uses: Ankara-Software/ci-actions/artifact-ticket@v1
+        with:
+          names: linux-soft-cleaner-linux-x64 linux-soft-cleaner-linux-arm64 linux-soft-cleaner-darwin-x64 linux-soft-cleaner-darwin-arm64
+          hours: "6"
+
   build:
     name: Build - ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    needs: tickets
+    runs-on: ${{ fromJSON(matrix.runner) }}
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: linux
+            runner: '["self-hosted","s31"]'
             target: x86_64-unknown-linux-gnu
             asset_name: linux-soft-cleaner-linux-x64
             use_cross: false
-          - os: ubuntu-latest
+          - os: linux
+            runner: '["self-hosted","s31"]'
             target: aarch64-unknown-linux-gnu
             asset_name: linux-soft-cleaner-linux-arm64
             use_cross: true
-          - os: macos-latest
+          - os: macos
+            runner: '["self-hosted","macOS","s11"]'
             target: x86_64-apple-darwin
             asset_name: linux-soft-cleaner-darwin-x64
             use_cross: false
-          - os: macos-latest
+          - os: macos
+            runner: '["self-hosted","macOS","s11"]'
             target: aarch64-apple-darwin
             asset_name: linux-soft-cleaner-darwin-arm64
             use_cross: false
@@ -58,23 +75,43 @@ jobs:
           mv target/${{ matrix.target }}/release/linux-soft-cleaner ${{ matrix.asset_name }}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: Ankara-Software/ci-actions/artifact-upload@v1
         with:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.asset_name }}
+          ticket: ${{ toJSON(fromJSON(needs.tickets.outputs.tickets)[matrix.asset_name]) }}
 
   release:
     name: Create GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, s31]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+      - name: Download build artifact linux-soft-cleaner-linux-x64
+        uses: Ankara-Software/ci-actions/artifact-download@v1
         with:
-          path: ./artifacts
+          name: linux-soft-cleaner-linux-x64
+          path: ./artifacts/linux-soft-cleaner-linux-x64
+
+      - name: Download build artifact linux-soft-cleaner-linux-arm64
+        uses: Ankara-Software/ci-actions/artifact-download@v1
+        with:
+          name: linux-soft-cleaner-linux-arm64
+          path: ./artifacts/linux-soft-cleaner-linux-arm64
+
+      - name: Download build artifact linux-soft-cleaner-darwin-x64
+        uses: Ankara-Software/ci-actions/artifact-download@v1
+        with:
+          name: linux-soft-cleaner-darwin-x64
+          path: ./artifacts/linux-soft-cleaner-darwin-x64
+
+      - name: Download build artifact linux-soft-cleaner-darwin-arm64
+        uses: Ankara-Software/ci-actions/artifact-download@v1
+        with:
+          name: linux-soft-cleaner-darwin-arm64
+          path: ./artifacts/linux-soft-cleaner-darwin-arm64
 
       - name: Flatten artifacts directory
         run: |
