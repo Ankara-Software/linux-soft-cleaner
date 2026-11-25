@@ -1,20 +1,32 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::process::Command;
 use clap::Parser;
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "A fast, safe, and minimal disk cleanup tool for Linux servers", long_about = None)]
 struct Args {
-    #[arg(short = 'n', long, help = "Run in dry-run mode (preview changes, no files will be deleted)")]
+    #[arg(
+        short = 'n',
+        long,
+        help = "Run in dry-run mode (preview changes, no files will be deleted)"
+    )]
     dry_run: bool,
 
-    #[arg(short, long, default_value = "7", help = "Threshold in days for temporary files and logs")]
+    #[arg(
+        short,
+        long,
+        default_value = "7",
+        help = "Threshold in days for temporary files and logs"
+    )]
     days: u64,
 
-    #[arg(long, help = "Also clean Docker system caches (containers, images, volumes)")]
+    #[arg(
+        long,
+        help = "Also clean Docker system caches (containers, images, volumes)"
+    )]
     docker: bool,
 
     #[arg(long, help = "Also clean global NPM cache")]
@@ -22,12 +34,21 @@ struct Args {
 }
 
 fn is_older_than_days(metadata: &fs::Metadata, days: u64) -> bool {
-    if let Ok(modified) = metadata.modified() {
-        if let Ok(elapsed) = modified.elapsed() {
-            return elapsed.as_secs() > days * 24 * 3600;
-        }
+    if let Ok(modified) = metadata.modified()
+        && let Ok(elapsed) = modified.elapsed()
+    {
+        return elapsed.as_secs() > days * 24 * 3600;
     }
     false
+}
+
+pub fn is_rotated_log_filename(filename: &str) -> bool {
+    filename.contains(".log.")
+        || filename.ends_with(".gz")
+        || filename.ends_with(".bz2")
+        || filename.ends_with(".xz")
+        || filename.ends_with(".1")
+        || filename.ends_with(".old")
 }
 
 fn clean_directory_files<F>(dir_path: &Path, args: &Args, filter: F, description: &str) -> u64
@@ -40,7 +61,7 @@ where
     }
 
     println!("{} {}...", "Analyzing".cyan(), description);
-    
+
     // Simple spinner for progress
     let pb = ProgressBar::new_spinner();
     pb.set_style(
@@ -76,7 +97,12 @@ where
 
             if filter(&path, &metadata) {
                 if args.dry_run {
-                    pb.println(format!("{} {} ({:.2} MB)", "Would delete:".green(), path.display(), size as f64 / 1_048_576.0));
+                    pb.println(format!(
+                        "{} {} ({:.2} MB)",
+                        "Would delete:".green(),
+                        path.display(),
+                        size as f64 / 1_048_576.0
+                    ));
                     saved_bytes += size;
                 } else {
                     match fs::remove_file(&path) {
@@ -85,7 +111,12 @@ where
                             saved_bytes += size;
                         }
                         Err(e) => {
-                            pb.println(format!("{} failed to delete {}: {}", "Error:".red(), path.display(), e));
+                            pb.println(format!(
+                                "{} failed to delete {}: {}",
+                                "Error:".red(),
+                                path.display(),
+                                e
+                            ));
                         }
                     }
                 }
@@ -100,11 +131,22 @@ where
 fn main() {
     let args = Args::parse();
 
-    println!("{}", format!("=== Linux Soft Cleaner v{} ===", env!("CARGO_PKG_VERSION")).bold().blue());
+    println!(
+        "{}",
+        format!("=== Linux Soft Cleaner v{} ===", env!("CARGO_PKG_VERSION"))
+            .bold()
+            .blue()
+    );
     if args.dry_run {
-        println!("{}", "Running in DRY-RUN mode. No changes will be written.".yellow());
+        println!(
+            "{}",
+            "Running in DRY-RUN mode. No changes will be written.".yellow()
+        );
     }
-    println!("File/Log age threshold: {} days\n", args.days.to_string().green());
+    println!(
+        "File/Log age threshold: {} days\n",
+        args.days.to_string().green()
+    );
 
     let mut total_saved: u64 = 0;
 
@@ -121,7 +163,7 @@ fn main() {
     total_saved += clean_directory_files(
         Path::new("/var/cache/apt/archives"),
         &args,
-        |path, _| path.extension().map_or(false, |ext| ext == "deb"),
+        |path, _| path.extension().is_some_and(|ext| ext == "deb"),
         "APT package cache",
     );
 
@@ -129,13 +171,13 @@ fn main() {
     total_saved += clean_directory_files(
         Path::new("/var/cache/dnf"),
         &args,
-        |path, _| path.extension().map_or(false, |ext| ext == "rpm"),
+        |path, _| path.extension().is_some_and(|ext| ext == "rpm"),
         "DNF package cache",
     );
     total_saved += clean_directory_files(
         Path::new("/var/cache/yum"),
         &args,
-        |path, _| path.extension().map_or(false, |ext| ext == "rpm"),
+        |path, _| path.extension().is_some_and(|ext| ext == "rpm"),
         "YUM package cache",
     );
 
@@ -156,8 +198,7 @@ fn main() {
         &args,
         |path, meta| {
             let filename = path.file_name().unwrap_or_default().to_string_lossy();
-            let is_rotated = filename.contains(".log.") || filename.ends_with(".gz") || filename.ends_with(".1") || filename.ends_with(".old");
-            is_rotated && is_older_than_days(meta, args.days)
+            is_rotated_log_filename(&filename) && is_older_than_days(meta, args.days)
         },
         "rotated system logs (/var/log)",
     );
@@ -166,7 +207,10 @@ fn main() {
     if args.docker {
         println!("\n{}", "Cleaning Docker system caches...".cyan());
         if args.dry_run {
-            println!("{} Would execute 'docker system prune -a --volumes -f'", "Dry-Run:".yellow());
+            println!(
+                "{} Would execute 'docker system prune -a --volumes -f'",
+                "Dry-Run:".yellow()
+            );
         } else {
             let output = Command::new("docker")
                 .args(["system", "prune", "-a", "--volumes", "-f"])
@@ -176,10 +220,10 @@ fn main() {
                     let stdout = String::from_utf8_lossy(&out.stdout);
                     println!("{}", stdout);
                     // Parse reclaimed space from docker output if possible
-                    if let Some(line) = stdout.lines().last() {
-                        if line.contains("Total reclaimed space:") {
-                            println!("{}", line.green());
-                        }
+                    if let Some(line) = stdout.lines().last()
+                        && line.contains("Total reclaimed space:")
+                    {
+                        println!("{}", line.green());
                     }
                 }
                 Err(e) => {
@@ -211,4 +255,30 @@ fn main() {
         println!("Total space saved: {:.2} MB", saved_mb);
     }
     println!("{}", "System cleanup completed successfully!".green());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_older_than_days_fresh_file() {
+        let path = std::env::temp_dir().join(format!("lsc-test-{}", std::process::id()));
+        fs::write(&path, "ok").unwrap();
+        let meta = fs::metadata(&path).unwrap();
+        assert!(!is_older_than_days(&meta, 7));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_is_rotated_log_filename() {
+        assert!(is_rotated_log_filename("syslog.1"));
+        assert!(is_rotated_log_filename("nginx.log.2026-08-01"));
+        assert!(is_rotated_log_filename("auth.log.gz"));
+        assert!(is_rotated_log_filename("kern.log.bz2"));
+        assert!(is_rotated_log_filename("daemon.log.xz"));
+        assert!(is_rotated_log_filename("app.log.old"));
+        assert!(!is_rotated_log_filename("active_app.log"));
+        assert!(!is_rotated_log_filename("config.toml"));
+    }
 }

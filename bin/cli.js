@@ -6,7 +6,7 @@ const https = require('https');
 const { spawn } = require('child_process');
 
 const VERSION = '0.1.1';
-const REPO = 'anilcan-kara/linux-soft-cleaner';
+const REPO = 'Ankara-Software/linux-soft-cleaner';
 
 // Map Node platform/arch to release assets
 const platform = process.platform;
