@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anilcan-kara/linux-soft-cleaner.git"
+    "url": "git+https://github.com/Ankara-Software/linux-soft-cleaner.git"
   },
   "keywords": [
     "linux",
@@ -26,9 +26,9 @@
   "author": "Anilcan Kara",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/anilcan-kara/linux-soft-cleaner/issues"
+    "url": "https://github.com/Ankara-Software/linux-soft-cleaner/issues"
   },
-  "homepage": "https://github.com/anilcan-kara/linux-soft-cleaner#readme",
+  "homepage": "https://github.com/Ankara-Software/linux-soft-cleaner#readme",
   "engines": {
     "node": ">=14"
   }
